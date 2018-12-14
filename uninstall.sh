@@ -7,4 +7,10 @@ source "$CurrentDirName/scripts/alwaysSudo.sh"
 
 printOut "Removing script links from /usr/local/bin"
 
-rm /usr/local/bin/uptodate
+while read installScript 
+do
+  echo -e "$installScript"
+  $installScript
+done  < <(awk -F":" '/.+\.sh:.+/{print "rm /usr/local/bin/" $2 }' ./install.scripts)
+
+printOut "Done"

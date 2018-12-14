@@ -7,6 +7,10 @@ source "$CurrentDirName/scripts/alwaysSudo.sh"
 
 printOut "Linking scripts to /usr/local/bin"
 
-awk -F":" '{print "ln -s $CurrentDirName/scripts/" $1 " /usr/local/bin/" $2 }' ./install.scripts | echo 
+while read installScript 
+do
+  echo -e "$installScript"
+  $installScript
+done  < <(awk -F":" -v currDir="$CurrentDirName" '/.+\.sh:.+/{print "ln -s " currDir "/scripts/" $1 " /usr/local/bin/" $2 }' ./install.scripts)
 
-#ln -s "$CurrentDirName/scripts/uptodate.sh" /usr/local/bin/uptodate
+printOut "Done"
