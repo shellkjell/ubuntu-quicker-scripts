@@ -13,4 +13,9 @@ do
   $installScript
 done  < <(awk -F":" -v currDir="$CurrentDirName" '/.+\.sh:.+/{print "ln -s " currDir "/scripts/" $1 " /usr/local/bin/" $2 }' ./install.scripts)
 
+printOut "Creating bash aliases"
+
+cp ~/.bash_aliases ~/.bash_aliases.EUSbak
+cp -f "$CurrentDirName/.bash_aliases" ~
+
 printOut "Done"

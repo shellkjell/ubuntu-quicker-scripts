@@ -13,4 +13,8 @@ do
   $installScript
 done  < <(awk -F":" '/.+\.sh:.+/{print "rm /usr/local/bin/" $2 }' ./install.scripts)
 
+printOut "Restoring .bash_aliases if existed"
+
+mv -f ~/.bash_aliases.EUSbak ~/.bash_aliases
+
 printOut "Done"
