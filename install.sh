@@ -16,6 +16,6 @@ done  < <(awk -F":" -v currDir="$CurrentDirName" '/.+\.sh:.+/{print "ln -s " cur
 printOut "Creating bash aliases"
 
 cp ~/.bash_aliases ~/.bash_aliases.EUSbak
-cp -f "$CurrentDirName/.bash_aliases" ~
+cat "$CurrentDirName/.bash_aliases" >> ~/.bash_aliases
 
 printOut "Done"
