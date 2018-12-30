@@ -2,15 +2,22 @@
 
 CurrentDirName=`dirname "$(readlink -f "$0")"`
 
+# Common utils, printOut, ...
 source "$CurrentDirName/scripts/common.sh"
+
+# Always run this script as sudo
 source "$CurrentDirName/scripts/alwaysSudo.sh"
 
+# Standard install packages
 installPackages="ranger apt-transport-https ca-certificates software-properties-common"
 
 args=$(getopt -l "dev" -o "d" -- "$@")
 
-eval set -- "$args"
+#
+## Pre-install tasks - decide which packages to install
+#
 
+eval set -- "$args"
 while [ $# -ge 1 ]; do
   case "$1" in
     --)
@@ -48,6 +55,7 @@ while [ $# -ge 1 ]; do
 	add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $UBUNTU_CODENAME stable"
 
 	installPackages="$installPackages docker-ce"
+      
       fi
       shift
       ;;
@@ -56,6 +64,10 @@ while [ $# -ge 1 ]; do
   shift
 done
 
+#
+## Install packages
+#
+
 installPackages=$((echo "$installPackages") | sed 's/[\n\t]/ /g' | xargs echo -n)
 
 printOut "Trying to install these packages:\n\033[1;32m$(echo "$installPackages" | xargs -n5 | sed -e 's/^/   /')\033[0m"
@@ -63,21 +75,47 @@ printOut "Trying to install these packages:\n\033[1;32m$(echo "$installPackages"
 apt update
 apt install $installPackages
 
-# If we're running openvpn docker might have some trouble setting up a bridge
-# Check and fix
-if [ -z $(ls /sys/class/net | grep docker0) ]
-then
-  sudo brctl addbr docker0
-  sudo ip addr add 192.168.77.1/24 dev docker0
-  sudo ip link set dev docker0 up
-  ip addr show docker0
-  sudo systemctl restart docker
-  sudo iptables -t nat -L -n
-fi
+#
+## Finish up with eventual post-install actions
+#
+
+eval set -- "$args"
+while [ $# -ge 1 ]; do
+  case "$1" in
+    --)
+      shift
+      break
+      ;;
+    -d|--dev)
+      # If we're running openvpn docker might have some trouble setting up a bridge
+      # Check and if no bridge yet, create it
+      if [ -z $(ls /sys/class/net | grep docker0) ]
+      then
+        sudo brctl addbr docker0
+        sudo ip addr add 192.168.77.1/24 dev docker0
+        sudo ip link set dev docker0 up
+        ip addr show docker0
+        sudo systemctl restart docker
+        sudo iptables -t nat -L -n
+      fi
+
+      # Add user to docker group so we can run without sudo
+      usermod -a -G docker $SUDO_USER
+      shift
+      ;;
+  esac
+
+  shift
+done
+
+#
+## Link all scripts
+#
 
 printOut "Linking scripts to /usr/local/bin"
 
-while read installScript 
+# Read every line in the file install.scripts, only using the ones with a valid configuration (i.e. `script.sh:desiredName`. look at the last line of the loop, `done < <`...)
+while read installScript
 do
   echo -e "$installScript"
   $installScript
