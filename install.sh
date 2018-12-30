@@ -5,7 +5,7 @@ CurrentDirName=`dirname "$(readlink -f "$0")"`
 source "$CurrentDirName/scripts/common.sh"
 source "$CurrentDirName/scripts/alwaysSudo.sh"
 
-installPackages="ranger"
+installPackages="ranger apt-transport-https ca-certificates software-properties-common"
 
 args=$(getopt -l "dev" -o "d" -- "$@")
 
@@ -20,23 +20,34 @@ while [ $# -ge 1 ]; do
     -d|--dev)
       printOut "common development environment software is going to be installed (option $1)"
       installPackages="$installPackages build-essential git make curl \
-	      net-tools basez golang-go npm"
+	      net-tools basez golang-go npm vim"
 
       if [ command -v code ]
       then
       	printOut "vscode already installed, skipping"
       else
-	printOut "vscode is going to be installed (option $1)"
+	printOut "vscode is going to be installed"
 	# Add microsoft gpg key for vscode
-	curl -s https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg
+	curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 	# Create entry in sources.list.d
-	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/vscode.list'
+	add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
         
 	# Restore permissions
 	chmod 770 /home/$SUDO_USER/.gnupg
 	chown $SUDO_USER:$SUDO_USER /home/$SUDO_USER/.gnupg
 	
 	installPackages="$installPackages code"
+      fi
+
+      if [ command -v docker && command -v docker-compose ]
+      then
+        printOut "Docker already installed, skipping"
+      else
+	printOut "Docker is going to be installed"
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+	add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $UBUNTU_CODENAME stable"
+
+	installPackages="$installPackages docker-ce"
       fi
       shift
       ;;
@@ -51,6 +62,18 @@ printOut "Trying to install these packages:\n\033[1;32m$(echo "$installPackages"
 
 apt update
 apt install $installPackages
+
+# If we're running openvpn docker might have some trouble setting up a bridge
+# Check and fix
+if [ -z $(ls /sys/class/net | grep docker0) ]
+then
+  sudo brctl addbr docker0
+  sudo ip addr add 192.168.77.1/24 dev docker0
+  sudo ip link set dev docker0 up
+  ip addr show docker0
+  sudo systemctl restart docker
+  sudo iptables -t nat -L -n
+fi
 
 printOut "Linking scripts to /usr/local/bin"
 
