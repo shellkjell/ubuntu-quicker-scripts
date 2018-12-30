@@ -1,3 +1,4 @@
+```bash
 # Choose scripts to be installed 
 export toBeInstalled="alwaysSudo common uptodate"
 
@@ -18,3 +19,4 @@ for script in "${toBeInstalledArray[@]}"; do
 done
 
 cd .. && ./install.sh
+```
