@@ -8,6 +8,12 @@ source "$CurrentDirName/scripts/common.sh"
 # Always run this script as sudo
 source "$CurrentDirName/scripts/alwaysSudo.sh"
 
+# Data about our release ($UBUNTU_CODENAME etc.)
+source /etc/os-release
+
+# We will need curl for dev install
+apt update && apt install curl
+
 # Standard install packages
 installPackages="ranger apt-transport-https ca-certificates software-properties-common"
 
@@ -29,7 +35,7 @@ while [ $# -ge 1 ]; do
       installPackages="$installPackages build-essential git make curl \
       net-tools basez golang-go npm vim"
       
-      if [ command -v code ]
+      if dpkg -l code
       then
         printOut "vscode already installed, skipping"
       else
@@ -42,7 +48,7 @@ while [ $# -ge 1 ]; do
         installPackages="$installPackages code"
       fi
       
-      if [ command -v docker && command -v docker-compose ]
+      if dpkg -l docker
       then
         printOut "Docker already installed, skipping"
       else
@@ -52,11 +58,14 @@ while [ $# -ge 1 ]; do
         
         installPackages="$installPackages docker-ce"        
       fi
-        
+
+      # Since we added keys with root privileges, kill the root connection to the gpgconf socket
+      gpgconf --kill dirmngr
+
       # Restore permissions (otherwise /home/user/.gnupg error later on aswell)
-      chmod 770 /home/$SUDO_USER/.gnupg
-      chown $SUDO_USER:$SUDO_USER /home/$SUDO_USER/.gnupg
-      
+      chown -R $SUDO_USER:$SUDO_USER /home/$SUDO_USER/gnupg
+      apt update
+
       shift
     ;;
   esac
@@ -72,7 +81,6 @@ installPackages=$((echo "$installPackages") | sed 's/[\n\t]/ /g' | xargs echo -n
 
 printOut "Trying to install these packages:\n\033[1;32m$(echo "$installPackages" | xargs -n5 | sed -e 's/^/   /')\033[0m"
 
-apt update
 apt install $installPackages
 
 #
